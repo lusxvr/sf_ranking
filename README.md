@@ -1,0 +1,1 @@
+This is the repository for the final project of the computer vision course at l'X
