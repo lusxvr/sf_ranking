@@ -111,18 +111,11 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
         # Combine the visualization image and legend
         final_visualization = np.vstack((visualization_image, legend_image))
 
-        # Show the final image
-        plt.figure(figsize=(6, 6))
-        plt.axis("off")
-        plt.imshow(cv2.cvtColor(final_visualization, cv2.COLOR_BGR2RGB))
-        plt.title("Snowflake Circularity Visualization")
-        plt.show()
-
         plt.figure(figsize=(12, 6))
         
         plt.subplot(2, 3, 1)
-        plt.title("Original")
-        plt.imshow(blurred, cmap='gray')
+        plt.title("Original + Circularity")
+        plt.imshow(cv2.cvtColor(final_visualization, cv2.COLOR_BGR2RGB))
         plt.axis('off')
         
         plt.subplot(2, 3, 2)
