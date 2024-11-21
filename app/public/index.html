@@ -1,0 +1,76 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Voting App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    images: [
+                        // Natural snowflakes 
+                        ...Array(66).fill().map((_, i) => 
+                            `/data/${String(i + 1).padStart(3, '0')}.jpg`
+                        ),
+                        //Artificial snowflakes
+                        `/data/artificial1.jpg`,
+                        `/data/artificial2.png`,
+                        `/data/artificial3.jpg`,
+                        `/data/artificial4.jpg`,
+                        `/data/artificial5.jpg`
+                    ],
+                    randomImages: [],
+                    currentPair: 1,
+                    maxPairs: 15
+                };
+            },
+            mounted() {
+                this.pickRandomImages();
+            },
+            methods: {
+                pickRandomImages() {
+                    if (this.currentPair <= this.maxPairs) {
+                        const shuffled = this.images.sort(() => 0.5 - Math.random());
+                        this.randomImages = shuffled.slice(0, 2);
+                    }
+                },
+                vote(image) {
+                    axios.post('/vote', { selectedImage: image }).then(() => {
+                        if (this.currentPair < this.maxPairs) {
+                            this.currentPair++;
+                            this.pickRandomImages();
+                        } else {
+                            alert('Thank you for completing the survey!');
+                        }
+                    }).catch(err => console.error(err));
+                },
+            },
+            template: `
+                <div>
+                    <h1>Which snowflake do you like better?</h1>
+                    <div v-if="currentPair <= maxPairs">
+                        <div v-for="image in randomImages" :key="image" class="image-container">
+                            <img :src="image" alt="Image" class="snowflake-image" />
+                            <br />
+                            <button @click="vote(image)">I like this one</button>
+                        </div>
+                        <div class="counter">
+                            Pair {{ currentPair }} of {{ maxPairs }}
+                        </div>
+                    </div>
+                    <div v-else class="completion-message">
+                        <h2>Thank you for completing the survey!</h2>
+                    </div>
+                </div>
+            `
+        });
+        app.mount('#app');
+    </script>
+</body>
+</html>
