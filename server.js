@@ -6,12 +6,12 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 console.log('Starting server...');
 
 // Log the current directory and data directory path
-const dataPath = path.join(__dirname, '../data');
+const dataPath = path.join(__dirname, 'data');
 console.log('Current directory:', __dirname);
 console.log('Data directory path:', dataPath);
 
@@ -38,8 +38,8 @@ app.use((err, req, res, next) => {
 
 app.use(bodyParser.json());
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from the root directory
+app.use(express.static(path.join(__dirname)));
 
 // Add logging middleware for all requests
 app.use((req, res, next) => {
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 });
 
 // Serve data files with detailed logging
-app.use('/data', (req, res, next) => {
+app.use('data', (req, res, next) => {
     console.log('Data request:', req.url);
     const filePath = path.join(dataPath, req.url);
     console.log('Looking for file:', filePath);
@@ -140,6 +140,11 @@ app.get('/debug/votes', (req, res) => {
         }
         res.json(rows);
     });
+});
+
+// Serve index.html for the root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start the server
