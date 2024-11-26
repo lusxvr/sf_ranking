@@ -1,14 +1,51 @@
 // server.js
 const express = require('express');
-const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bodyParser = require('body-parser');
 const fs = require('fs');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 console.log('Starting server...');
+
+// Middleware to handle JSON requests
+app.use(bodyParser.json());
+
+// Serve static files from the root directory
+app.use(express.static(path.join(__dirname)));
+
+// Add logging middleware for all requests
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
+
+// Serve data files with detailed logging
+app.use('/data', (req, res, next) => {
+    console.log('Data request:', req.url);
+    const filePath = path.join(__dirname, 'data', req.url);
+    console.log('Looking for file:', filePath);
+    if (fs.existsSync(filePath)) {
+        console.log('File exists, serving:', filePath);
+        res.sendFile(filePath);
+    } else {
+        console.log('File not found:', filePath);
+        next();
+    }
+});
+
+// Serve index.html for the root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Global error:', err);
+    res.status(500).json({ error: err.message });
+});
 
 // Log the current directory and data directory path
 const dataPath = path.join(__dirname, 'data');
@@ -27,37 +64,6 @@ fs.readdir(dataPath, (err, files) => {
         console.error('Error reading data directory:', err);
     } else {
         console.log('Files in data directory:', files);
-    }
-});
-
-// Global error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).json({ error: err.message });
-});
-
-app.use(bodyParser.json());
-
-// Serve static files from the root directory
-app.use(express.static(path.join(__dirname)));
-
-// Add logging middleware for all requests
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    next();
-});
-
-// Serve data files with detailed logging
-app.use('data', (req, res, next) => {
-    console.log('Data request:', req.url);
-    const filePath = path.join(dataPath, req.url);
-    console.log('Looking for file:', filePath);
-    if (fs.existsSync(filePath)) {
-        console.log('File exists, serving:', filePath);
-        res.sendFile(filePath);
-    } else {
-        console.log('File not found:', filePath);
-        next();
     }
 });
 
@@ -140,11 +146,6 @@ app.get('/debug/votes', (req, res) => {
         }
         res.json(rows);
     });
-});
-
-// Serve index.html for the root route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start the server
