@@ -1,17 +1,24 @@
 {
-  "name": "sf_ranking",
+  "name": "snowflake-voting-app",
   "version": "1.0.0",
-  "description": "This is the repository for the final project of the computer vision course at l'X",
-  "main": "index.js",
+  "description": "A simple app for voting on snowflakes, with results stored in a database. This is the repository for the final project of the computer vision course at l'X.",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "vue",
+    "snowflake-voting",
+    "sqlite",
+    "express"
+  ],
+  "author": "Luisianna",
+  "license": "MIT",
   "dependencies": {
     "body-parser": "^1.20.3",
     "express": "^4.21.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "lowdb": "^3.0.0"
   }
 }

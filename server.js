@@ -70,6 +70,7 @@ app.use((req, res, next) => {
     next();
 });
 
+// Set up SQLite database
 const db = new sqlite3.Database(':memory:');
 db.serialize(() => {
     db.run(`CREATE TABLE votes (
@@ -88,30 +89,28 @@ app.post('/vote', (req, res) => {
             return res.status(400).json({ error: 'Image not specified' });
         }
 
-        // Log the full request body and image path
-        console.log('Full request body:', req.body);
-        console.log('Recording vote for:', selectedImage);
-
-        // Extract just the filename from the path
+        // Extract the filename from the full path
         const imageName = selectedImage.split('/').pop();
-        console.log('Image name:', imageName);
+        console.log('Recording vote for:', imageName);
 
         db.run(
             `INSERT INTO votes (image, shown_count, liked_count)
              VALUES (?, 1, 1)
              ON CONFLICT(image)
-             DO UPDATE SET shown_count = shown_count + 1, liked_count = liked_count + 1`,
+             DO UPDATE SET 
+                 shown_count = shown_count + 1, 
+                 liked_count = liked_count + 1`,
             [imageName],
-            function(err) {
+            function (err) {
                 if (err) {
                     console.error('Database error details:', err);
                     return res.status(500).json({ error: err.message });
                 }
                 console.log('Vote successfully recorded. Changes:', this.changes);
-                res.json({ 
+                res.json({
                     success: true,
-                    message: 'Vote recorded', 
-                    changes: this.changes 
+                    message: 'Vote recorded',
+                    changes: this.changes,
                 });
             }
         );
@@ -121,24 +120,29 @@ app.post('/vote', (req, res) => {
     }
 });
 
+// API to fetch statistics
 app.get('/stats', (req, res) => {
-    db.all("SELECT * FROM votes", [], (err, rows) => {
-        if (err) return res.status(500).send('Database error');
-        res.json(rows);
-    });
-});
-
-// Add a test endpoint to check database state
-app.get('/debug/votes', (req, res) => {
-    db.all("SELECT * FROM votes", [], (err, rows) => {
+    db.all('SELECT * FROM votes', [], (err, rows) => {
         if (err) {
-            console.error('Debug endpoint error:', err);
-            return res.status(500).send(`Database error: ${err.message}`);
+            console.error('Error fetching stats:', err);
+            return res.status(500).json({ error: 'Database error' });
         }
         res.json(rows);
     });
 });
 
+// Debugging endpoint to check database state
+app.get('/debug/votes', (req, res) => {
+    db.all('SELECT * FROM votes', [], (err, rows) => {
+        if (err) {
+            console.error('Debug endpoint error:', err);
+            return res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+        res.json(rows);
+    });
+});
+
+// Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
