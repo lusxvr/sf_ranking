@@ -8,6 +8,19 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Initialize SQLite database
+const db = new sqlite3.Database(':memory:');
+
+db.serialize(() => {
+    db.run("CREATE TABLE IF NOT EXISTS votes (image TEXT PRIMARY KEY, count INTEGER DEFAULT 0)", (err) => {
+        if (err) {
+            console.error('Error creating votes table:', err);
+        } else {
+            console.log('Votes table initialized');
+        }
+    });
+});
+
 console.log('Starting server...');
 
 // Middleware to handle JSON requests
@@ -26,126 +39,52 @@ app.use((req, res, next) => {
 app.use('/data', (req, res, next) => {
     console.log('Data request:', req.url);
     const filePath = path.join(__dirname, 'data', req.url);
-    console.log('Looking for file:', filePath);
     if (fs.existsSync(filePath)) {
-        console.log('File exists, serving:', filePath);
         res.sendFile(filePath);
     } else {
-        console.log('File not found:', filePath);
-        next();
+        res.status(404).send('File not found');
     }
+});
+
+// Endpoint to get images
+app.get('/api/images', (req, res) => {
+    const images = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'images.json')));
+    res.json(images);
+});
+
+// Endpoint to vote for an image
+app.post('/api/vote', (req, res) => {
+    const { image } = req.body;
+    if (!image) {
+        console.error('Vote error: Image is required');
+        return res.status(400).send('Image is required');
+    }
+    
+    console.log('Voting for image:', image); // Log the image being voted for
+
+    db.run("INSERT INTO votes (image, count) VALUES (?, 1) ON CONFLICT(image) DO UPDATE SET count = count + 1", [image], function(err) {
+        if (err) {
+            console.error('Database error during vote:', err); // Log the error
+            return res.status(500).send('Database error');
+        }
+        console.log('Vote recorded for image:', image); // Log successful vote
+        res.status(200).send('Vote received');
+    });
+});
+
+// Endpoint to get vote counts
+app.get('/api/votes', (req, res) => {
+    db.all("SELECT image, count FROM votes", (err, rows) => {
+        if (err) {
+            return res.status(500).send('Database error');
+        }
+        res.json(rows);
+    });
 });
 
 // Serve index.html for the root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).json({ error: err.message });
-});
-
-// Log the current directory and data directory path
-const dataPath = path.join(__dirname, 'data');
-console.log('Current directory:', __dirname);
-console.log('Data directory path:', dataPath);
-
-// Check if data directory exists
-if (!fs.existsSync(dataPath)) {
-    console.error('Error: Data directory not found at:', dataPath);
-    process.exit(1);
-}
-
-// List files in data directory
-fs.readdir(dataPath, (err, files) => {
-    if (err) {
-        console.error('Error reading data directory:', err);
-    } else {
-        console.log('Files in data directory:', files);
-    }
-});
-
-// Add CSP headers middleware
-app.use((req, res, next) => {
-    res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
-    );
-    next();
-});
-
-// Set up SQLite database
-const db = new sqlite3.Database(':memory:');
-db.serialize(() => {
-    db.run(`CREATE TABLE votes (
-        image TEXT PRIMARY KEY,
-        shown_count INTEGER DEFAULT 0,
-        liked_count INTEGER DEFAULT 0
-    )`);
-});
-
-// API to record a vote
-app.post('/vote', (req, res) => {
-    try {
-        const { selectedImage } = req.body;
-        if (!selectedImage) {
-            console.error('No image specified in request');
-            return res.status(400).json({ error: 'Image not specified' });
-        }
-
-        // Extract the filename from the full path
-        const imageName = selectedImage.split('/').pop();
-        console.log('Recording vote for:', imageName);
-
-        db.run(
-            `INSERT INTO votes (image, shown_count, liked_count)
-             VALUES (?, 1, 1)
-             ON CONFLICT(image)
-             DO UPDATE SET 
-                 shown_count = shown_count + 1, 
-                 liked_count = liked_count + 1`,
-            [imageName],
-            function (err) {
-                if (err) {
-                    console.error('Database error details:', err);
-                    return res.status(500).json({ error: err.message });
-                }
-                console.log('Vote successfully recorded. Changes:', this.changes);
-                res.json({
-                    success: true,
-                    message: 'Vote recorded',
-                    changes: this.changes,
-                });
-            }
-        );
-    } catch (error) {
-        console.error('Server error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API to fetch statistics
-app.get('/stats', (req, res) => {
-    db.all('SELECT * FROM votes', [], (err, rows) => {
-        if (err) {
-            console.error('Error fetching stats:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json(rows);
-    });
-});
-
-// Debugging endpoint to check database state
-app.get('/debug/votes', (req, res) => {
-    db.all('SELECT * FROM votes', [], (err, rows) => {
-        if (err) {
-            console.error('Debug endpoint error:', err);
-            return res.status(500).json({ error: `Database error: ${err.message}` });
-        }
-        res.json(rows);
-    });
 });
 
 // Start the server

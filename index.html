@@ -6,79 +6,88 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .image-container img {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-    <div id="app"></div>
+    <div id="app">
+        <div v-if="currentPair.length === 2" class="image-container">
+            <div v-for="image in currentPair" :key="image">
+                <img :src="image" :alt="image" @click="vote(image)">
+                <span>{{ votes[image] || 0 }} votes</span>
+            </div>
+        </div>
+        <div v-else>
+            <p>Loading images...</p>
+        </div>
+    </div>
     <script>
         const app = Vue.createApp({
             data() {
                 return {
-                    images: [
-                        // Natural snowflakes 
-                        ...Array(66).fill().map((_, i) => 
-                            `data/${String(i + 1).padStart(3, '0')}.jpg`
-                        ),
-                        //Artificial snowflakes
-                        `data/artificial1.jpg`,
-                        `data/artificial2.png`,
-                        `data/artificial6.jpg`,
-                        `data/artificial7.jpg`,
-                        `data/artificial8.jpg`,
-                        `data/artificial9.jpg`,
-                        `data/artificial10.jpg`,
-                        `data/artificial11.jpg`,
-                        `data/artificial12.jpg`,
-                        `data/example1.jpg`,
-                        `data/example2.jpg`,
-                        `data/example3.jpg`,
-                        `data/example4.jpg`,
-                        `data/example5.jpg`,
-
-                    ],
-                    randomImages: [],
-                    currentPair: 1,
-                    maxPairs: 15
+                    images: [],
+                    currentPair: [],
+                    votes: {}
                 };
             },
             mounted() {
-                this.pickRandomImages();
+                axios.get('/api/images')
+                    .then(response => {
+                        this.images = response.data;
+                        this.pickRandomPair();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                this.getVotes();
             },
             methods: {
-                pickRandomImages() {
-                    if (this.currentPair <= this.maxPairs) {
-                        const shuffled = this.images.sort(() => 0.5 - Math.random());
-                        this.randomImages = shuffled.slice(0, 2);
-                    }
-                },
                 vote(image) {
-                    axios.post('/vote', { selectedImage: image }).then(() => {
-                        if (this.currentPair < this.maxPairs) {
-                            this.currentPair++;
-                            this.pickRandomImages();
-                        } else {
-                            alert('Thank you for completing the survey!');
-                        }
-                    }).catch(err => console.error(err));
+                    axios.post('/api/vote', { image })
+                        .then(response => {
+                            console.log('Vote received:', response.data);
+                            this.getVotes();
+                            this.pickRandomPair();
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
                 },
-            },
-            template: `
-                <div>
-                    <h1>Which snowflake do you like better?</h1>
-                    <div v-if="currentPair <= maxPairs">
-                        <div v-for="image in randomImages" :key="image" class="image-container">
-                            <img :src="image" alt="Image" class="snowflake-image" />
-                            <br />
-                            <button @click="vote(image)">I like this one</button>
-                        </div>
-                        <div class="counter">
-                            Pair {{ currentPair }} of {{ maxPairs }}
-                        </div>
-                    </div>
-                    <div v-else class="completion-message">
-                        <h2>Thank you for completing the survey!</h2>
-                    </div>
-                </div>
-            `
+                getVotes() {
+                    axios.get('/api/votes')
+                        .then(response => {
+                            this.votes = response.data.reduce((acc, vote) => {
+                                acc[vote.image] = vote.count;
+                                return acc;
+                            }, {});
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                },
+                pickRandomPair() {
+                    if (this.images.length >= 2) {
+                        let firstIndex = Math.floor(Math.random() * this.images.length);
+                        let secondIndex;
+                        do {
+                            secondIndex = Math.floor(Math.random() * this.images.length);
+                        } while (secondIndex === firstIndex);
+                        this.currentPair = [this.images[firstIndex], this.images[secondIndex]];
+                    }
+                }
+            }
         });
         app.mount('#app');
     </script>
