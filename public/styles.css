@@ -1,0 +1,22 @@
+.image-container {
+    display: inline-block;
+    margin: 10px;
+}
+
+.snowflake-image {
+    width: 200px;
+    height: auto;
+}
+
+.counter {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 1.2em;
+    color: #666;
+}
+
+.completion-message {
+    text-align: center;
+    margin-top: 50px;
+    color: #4CAF50;
+}

@@ -8,8 +8,7 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize SQLite database
-const db = new sqlite3.Database(':memory:');
+const db = new sqlite3.Database(path.join(__dirname, 'votes.db'));
 
 db.serialize(() => {
     db.run("CREATE TABLE IF NOT EXISTS votes (image TEXT PRIMARY KEY, count INTEGER DEFAULT 0)", (err) => {

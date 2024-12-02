@@ -24,13 +24,14 @@
 <body>
     <div id="app">
         <div v-if="currentPair.length === 2" class="image-container">
+            <span>Click on the image you like better:</span>
             <div v-for="image in currentPair" :key="image">
                 <img :src="image" :alt="image" @click="vote(image)">
-                <span>{{ votes[image] || 0 }} votes</span>
             </div>
         </div>
         <div v-else>
-            <p>Loading images...</p>
+            <p v-if="pairsShown < maxPairs">Loading images...</p>
+            <p v-else>Thank you for voting!</p>
         </div>
     </div>
     <script>
@@ -39,7 +40,10 @@
                 return {
                     images: [],
                     currentPair: [],
-                    votes: {}
+                    votes: {},
+                    pairsShown: 0,
+                    maxPairs: 15,
+                    shownImages: new Set()
                 };
             },
             mounted() {
@@ -59,7 +63,14 @@
                         .then(response => {
                             console.log('Vote received:', response.data);
                             this.getVotes();
-                            this.pickRandomPair();
+                            this.pairsShown++;
+                            if (this.pairsShown < this.maxPairs) {
+                                this.pickRandomPair();
+                            } else {
+                                setTimeout(() => {
+                                    window.close();
+                                }, 2000);
+                            }
                         })
                         .catch(error => {
                             console.error('Error:', error);
@@ -79,11 +90,17 @@
                 },
                 pickRandomPair() {
                     if (this.images.length >= 2) {
-                        let firstIndex = Math.floor(Math.random() * this.images.length);
-                        let secondIndex;
+                        let firstIndex, secondIndex;
+                        do {
+                            firstIndex = Math.floor(Math.random() * this.images.length);
+                        } while (this.shownImages.has(this.images[firstIndex]));
+                        this.shownImages.add(this.images[firstIndex]);
+
                         do {
                             secondIndex = Math.floor(Math.random() * this.images.length);
-                        } while (secondIndex === firstIndex);
+                        } while (secondIndex === firstIndex || this.shownImages.has(this.images[secondIndex]));
+                        this.shownImages.add(this.images[secondIndex]);
+
                         this.currentPair = [this.images[firstIndex], this.images[secondIndex]];
                     }
                 }

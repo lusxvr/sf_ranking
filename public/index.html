@@ -1,0 +1,99 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Voting App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .image-container img {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div v-if="currentPair.length === 2" class="image-container">
+            <div v-for="image in currentPair" :key="image">
+                <img :src="image" :alt="image" @click="vote(image)">
+                <span>{{ votes[image] || 0 }} votes</span>
+            </div>
+        </div>
+        <div v-else>
+            <p>Loading images...</p>
+        </div>
+    </div>
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    images: [],
+                    currentPair: [],
+                    votes: {}
+                };
+            },
+            mounted() {
+                axios.get('/api/images')
+                    .then(response => {
+                        this.images = response.data;
+                        this.pickRandomPair();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                this.getVotes();
+            },
+            methods: {
+                vote(image) {
+                    axios.post('/api/vote', { image })
+                        .then(response => {
+                            console.log('Vote received:', response.data);
+                            this.getVotes();
+                            this.pickRandomPair();
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                },
+                getVotes() {
+                    axios.get('/api/votes')
+                        .then(response => {
+                            if (Array.isArray(response.data)) {
+                                this.votes = response.data.reduce((acc, vote) => {
+                                    acc[vote.image] = vote.count;
+                                    return acc;
+                                }, {});
+                            } else {
+                                console.error('Unexpected response format:', response.data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                },
+                pickRandomPair() {
+                    if (this.images.length >= 2) {
+                        let firstIndex = Math.floor(Math.random() * this.images.length);
+                        let secondIndex;
+                        do {
+                            secondIndex = Math.floor(Math.random() * this.images.length);
+                        } while (secondIndex === firstIndex);
+                        this.currentPair = [this.images[firstIndex], this.images[secondIndex]];
+                    }
+                }
+            }
+        });
+        app.mount('#app');
+    </script>
+</body>
+</html>
