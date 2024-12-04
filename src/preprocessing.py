@@ -11,8 +11,8 @@ def preprocess_image(image):
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV,
-        9,
-        4
+        11,
+        2
     )
     # Apply Otsu's thresholding
     # _, thresh = cv2.threshold(
