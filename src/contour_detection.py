@@ -25,11 +25,11 @@ def detect_contours(preprocessed_image):
     
     # connect components using morphological operations https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
     # todo this is sometimes too rough  
-    kernel = np.ones((3,3), np.uint8)
-    connected = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    final_contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #kernel = np.ones((3,3), np.uint8)
+    #connected = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    #final_contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    main_contour = max(final_contours, key=cv2.contourArea)
+    main_contour = max(contours, key=cv2.contourArea)
 
     # Added smoothing of the contour. This helps for real world snowflakes but doesnt for artificial ones because they already have a perfect contour
     epsilon = 0.0001 * cv2.arcLength(main_contour, True)
