@@ -88,6 +88,7 @@ def segment_image(image_path, threshold=100, verbose=False):
 
     # Assign clusters to pixels
     cluster_map = np.argmax(u, axis=0).reshape(img.shape[:2])
+    print(np.unique(cluster_map))
 
     # Create the segmented image
     segmented_image = np.zeros_like(img)
