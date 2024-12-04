@@ -9,6 +9,7 @@ from scipy.spatial.distance import euclidean
 from skfuzzy import cmeans
 import matplotlib.pyplot as plt
 
+# https://f1000research.com/articles/12-1312
 def preprocess_image(image):
     """
     Simple grayscale conversion only
@@ -33,7 +34,7 @@ def preprocess_image(image):
 
     return thresh
 
-def segment_image(image_path, threshold=100):
+def segment_image(image_path, threshold=100, verbose=False):
     # Step 1: Read the image
     img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -76,35 +77,39 @@ def segment_image(image_path, threshold=100):
         if not merged:
             reduced_centroids.append(c1)
 
-    # Step 5: Apply FCM Clustering
+    # Step 5: Apply FCM Clustering with c=2 to enforce two clusters
     reduced_centroids = np.array(reduced_centroids)
     reshaped = img.reshape((-1, 3)).astype(np.float32)
 
-    # Apply Fuzzy C-means Clustering
+    # Apply Fuzzy C-means Clustering with c=2
     cntr, u, u0, d, jm, p, fpc = cmeans(
-        data=reshaped.T, c=3, m=2, error=0.005, maxiter=1000, init=None
+        data=reshaped.T, c=2, m=2, error=0.005, maxiter=1000, init=None
     )
 
     # Assign clusters to pixels
     cluster_map = np.argmax(u, axis=0).reshape(img.shape[:2])
 
-    # Visualize the segmented image
+    # Create the segmented image
     segmented_image = np.zeros_like(img)
-    for i in range(3):  # Assuming 3 clusters
-        segmented_image[cluster_map == i] = (i * 85, i * 85, i * 85)
 
+    # Assign colors: one cluster to white and the other to black
+    for i in range(2):  # Since we have enforced c=2
+        if i == 0:
+            segmented_image[cluster_map == i] = (255, 255, 255)  # White
+        else:
+            segmented_image[cluster_map == i] = (0, 0, 0)  # Black
 
+    if verbose:
+        plt.figure(figsize=(10, 8))
+        plt.subplot(1, 2, 1)
+        plt.title("Original Image")
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
 
-    """plt.figure(figsize=(10, 8))
-    plt.subplot(1, 2, 1)
-    plt.title("Original Image")
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
-
-    plt.subplot(1, 2, 2)
-    plt.title("Segmented Image")
-    plt.imshow(cv2.cvtColor(segmented_image, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
-    plt.show()"""
+        plt.subplot(1, 2, 2)
+        plt.title("Segmented Image")
+        plt.imshow(cv2.cvtColor(segmented_image, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
+        plt.show()
 
     return segmented_image
