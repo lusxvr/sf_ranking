@@ -4,6 +4,8 @@ from src import symetry_analysis as sa
 
 import matplotlib.pyplot as plt
 import cv2
+import os
+import json
 
 def main(image_path):
     image = cv2.imread(image_path)
@@ -16,8 +18,13 @@ def main(image_path):
 
 
 if __name__ == '__main__':
-    images = ["data/example1.jpg", "data/example2.jpg", "data/example3.jpg", "data/example4.jpg", "data/example5.jpg", "data/artificial2.png"]
-    scores = []
+    scores = {}
+    data_folder = "data/"
+    images = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if os.path.isfile(os.path.join(data_folder, f)) and f.lower().endswith('.jpg')]
     for path in images:
-        scores.append(main(path))
-    print(scores)
+        scores[path] = main(path)
+        #scores.append(main(path))
+        
+    output_file = "scores.json"
+    with open(output_file, 'w') as f:
+        json.dump(scores, f)
