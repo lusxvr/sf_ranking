@@ -40,31 +40,3 @@ def detect_contours(preprocessed_image):
 
     return contour_image, [smoothed_contour]
 
-def filter_contours(preprocessed_image, contours, min_area=1000, max_area=100000, circularity_threshold=0.2):
-    """
-    Verify and clean up the main snowflake contour.
-    Returns None if the contour doesn't meet the criteria for a valid snowflake.
-    """
-    if not contours or len(contours) == 0:
-        return None, []
-
-    main_contour = contours[0]
-    
-    # #Calculate area
-    # area = cv2.contourArea(main_contour)
-    # if area < min_area or area > max_area:
-    #     print("POT. DEPRECEATED: Contour is too small or too large; contour area: ", area)
-    #     #return None, []  # Contour is too small or too large
-
-    # # circularity
-    # perimeter = cv2.arcLength(main_contour, True)
-    # if perimeter == 0:
-    #     print("Contour has no perimeter; perimeter: ", perimeter)
-        
-    # circularity = 4 * np.pi * (area / (perimeter ** 2))
-    # if circularity < circularity_threshold:
-    #     print("POT. DEPRECEATED: Contour is not circular enough to be a snowflake; circularity: ", circularity)
-
-    contour_image = cv2.cvtColor(preprocessed_image, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(contour_image, [main_contour], -1, (0, 255, 0), 2)
-    return contour_image, [main_contour]
