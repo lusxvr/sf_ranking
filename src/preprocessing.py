@@ -1,15 +1,10 @@
 import cv2
-import cv2
 import numpy as np
-import cv2
-import numpy as np
-from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 from skimage.filters import gabor
 from scipy.spatial.distance import euclidean
 from skfuzzy import cmeans
-import matplotlib.pyplot as plt
 
-# https://f1000research.com/articles/12-1312
 def preprocess_image(image):
     """
     Simple grayscale conversion only
@@ -34,16 +29,49 @@ def preprocess_image(image):
 
     return thresh
 
+def compute_color_frequencies(image):
+    """Compute unique color frequencies in the image."""
+    # Reshape the image to a 2D array of pixels
+    pixels = image.reshape(-1, 3)
+    # Convert to float32 for FCM
+    pixels = pixels.astype(np.float32)
+
+    # Get unique colors
+    unique_colors = np.unique(pixels, axis=0)
+
+    # Optionally, reduce to main colors (e.g., using k-means or a simple heuristic)
+    # For simplicity, we can just return the unique colors
+    return unique_colors
+
 def segment_image(image_path, threshold=100, verbose=False):
     # Step 1: Read the image
     img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    # Visualization: Original Grayscale Image
+    plt.figure(figsize=(10, 8))
+    plt.subplot(2, 3, 1)
+    plt.title("Original Grayscale Image")
+    plt.imshow(gray, cmap='gray')
+    plt.axis('off')
+
     # Step 2: Apply Canny edge detection
     edges = cv2.Canny(gray, 100, 200)
 
+    # Visualization: Canny Edge Detection Result
+    plt.subplot(2, 3, 2)
+    plt.title("Canny Edge Detection")
+    plt.imshow(edges, cmap='gray')
+    plt.axis('off')
+
     # Step 3: Connected components
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(edges, connectivity=8)
+
+    # Visualization: Connected Components
+    plt.subplot(2, 3, 3)
+    plt.title("Connected Components")
+    plt.imshow(labels, cmap='nipy_spectral')
+    plt.axis('off')
 
     # Step 4: Extract Gabor features for each valid region
     valid_centroids = []
@@ -77,13 +105,27 @@ def segment_image(image_path, threshold=100, verbose=False):
         if not merged:
             reduced_centroids.append(c1)
 
-    # Step 5: Apply FCM Clustering with c=2 to enforce two clusters
-    reduced_centroids = np.array(reduced_centroids)
-    reshaped = img.reshape((-1, 3)).astype(np.float32)
+    # Visualization: Reduced Centroids
+    plt.subplot(2, 3, 4)
+    plt.title("Reduced Centroids")
+    centroid_image = np.zeros_like(gray)  # Create a blank image
+    for (x, y) in reduced_centroids:
+        if 0 <= x < centroid_image.shape[1] and 0 <= y < centroid_image.shape[0]:  # Check bounds
+            cv2.circle(centroid_image, (x, y), 5, (255, 255, 255), -1)  # Draw white circles
+    plt.imshow(centroid_image, cmap='gray')
+    plt.axis('off')
 
-    # Apply Fuzzy C-means Clustering with c=2
+    # Step 5: Compute Color Frequencies
+    unique_colors = compute_color_frequencies(img)
+    print(f"Unique colors: {len(unique_colors)}")
+
+    # Apply FCM Clustering using the unique colors
+    reshaped = unique_colors.reshape((-1, 3)).astype(np.float32)
+
+    # Apply Fuzzy C-means Clustering with the number of unique colors
+    c = len(unique_colors)  # Number of clusters based on unique colors
     cntr, u, u0, d, jm, p, fpc = cmeans(
-        data=reshaped.T, c=2, m=2, error=0.005, maxiter=1000, init=None
+        data=reshaped.T, c=c, m=2, error=0.005, maxiter=1000, init=None
     )
 
     # Assign clusters to pixels
@@ -93,24 +135,18 @@ def segment_image(image_path, threshold=100, verbose=False):
     # Create the segmented image
     segmented_image = np.zeros_like(img)
 
-    # Assign colors: one cluster to white and the other to black
-    for i in range(2):  # Since we have enforced c=2
-        if i == 0:
-            segmented_image[cluster_map == i] = (255, 255, 255)  # White
-        else:
-            segmented_image[cluster_map == i] = (0, 0, 0)  # Black
+    # Assign colors based on the cluster map
+    for i in range(c):  # Use the number of unique colors
+        color = unique_colors[i]
+        segmented_image[cluster_map == i] = color  # Assign the main color
 
-    if verbose:
-        plt.figure(figsize=(10, 8))
-        plt.subplot(1, 2, 1)
-        plt.title("Original Image")
-        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        plt.axis('off')
+    # Visualization: Final Segmented Image
+    plt.subplot(2, 3, 5)
+    plt.title("Final Segmented Image")
+    plt.imshow(cv2.cvtColor(segmented_image, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
 
-        plt.subplot(1, 2, 2)
-        plt.title("Segmented Image")
-        plt.imshow(cv2.cvtColor(segmented_image, cv2.COLOR_BGR2RGB))
-        plt.axis('off')
-        plt.show()
+    plt.tight_layout()
+    plt.show()
 
     return segmented_image

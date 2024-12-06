@@ -17,8 +17,8 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
     """
     Analyze the symmetry of the main snowflake contour with rotational symmetry.
     """
-    if not contours or len(contours) == 0:
-        return []
+    #if not contours or len(contours) == 0:
+    #    return []
 
     assert len(contours) == 1, "Expected exactly one contour"
     main_contour = contours[0]
@@ -41,12 +41,13 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
     resized = cv2.resize(square, (512, 512))
 
     # Use blurred image to check rotational symetry, this smoothed the effect of artifacts
-    blurred = cv2.GaussianBlur(resized, (7, 7), 0)
+    blurred = cv2.GaussianBlur(resized, (3, 3), 0)
     
     # rotational symmetry scores for multiple angles
     angles = [60, 120, 180, 240, 300] 
     symmetry_scores = []
     rotated_img = []
+
     for angle in angles:
         rotated = rotate(blurred, angle, reshape=False, mode='constant', cval=0, order=3)
         rotated_img.append(rotated)
@@ -55,7 +56,8 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
         symmetry_scores.append(score)
 
 
-    ### How circular is a snowflake? To answer this we combine various metrics
+
+    ### How pretty is a snowflake? To answer this we combine various metrics
 
     # Calculate the minimum enclosing circle
     ((cx, cy), radius) = cv2.minEnclosingCircle(main_contour)
@@ -146,3 +148,97 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
         plt.show()
     
     return final_score
+
+
+def plot_images(images, titles, cmaps):
+    plt.figure(figsize=(15, 5))
+    for i, (image, title, cmap) in enumerate(zip(images, titles, cmaps)):
+        plt.subplot(1, len(images), i + 1)
+        plt.imshow(image, cmap=cmap)
+        plt.title(title)
+        plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+
+def pipeline(image): 
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Step 1: Enhance Contrast using Histogram Equalization
+    equalized = gray  # Skip histogram equalization for simplicity
+
+    # Step 2: Apply Canny Edge Detection
+    edges = cv2.Canny(equalized, 50, 150)
+
+    # Step 3: Fill the Object (Flood Fill on Edges)
+    flood_fill = edges.copy()
+    h, w = flood_fill.shape[:2]
+    mask = np.zeros((h + 2, w + 2), np.uint8)
+
+    # Perform flood fill from the edges to detect connected regions
+    cv2.floodFill(flood_fill, mask, (0, 0), 255)
+
+    # Step 4: Invert the Flood-Filled Image
+    flood_fill_inverted = cv2.bitwise_not(flood_fill)
+
+    # Step 5: Combine the Inverted Flood-Fill and Original Edges
+    combined = cv2.bitwise_or(edges, flood_fill_inverted)
+
+    # Step 6: Morphological Operations to Close Small Gaps
+    kernel = np.ones((3, 3), np.uint8)
+    segmentation_mask = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    # Step 7: Invert the Final Mask to make Foreground Black and Background White
+    segmentation_result = cv2.bitwise_not(segmentation_mask)
+    #segmentation_result = segmentation_mask
+    # Ensure binary output
+    segmentation_result = (segmentation_result > 0).astype(np.uint8) * 255
+
+    # Plot the results (optional for debugging)
+    plot_images(
+        [image, gray, edges, segmentation_result],
+        ["Original Image", "Grayscale Image", "Canny Edges", "Segmented Image (Foreground: Black, Background: White)"],
+        [None, "gray", "gray", "gray"]
+    )
+
+    return segmentation_result
+
+def extract_contour(segmented_image, vis=True):
+    """
+    Extract the largest contour from the segmented image.
+    Optionally visualize the contour and bounding rectangle.
+    """
+    # Invert the mask if the background is black and the foreground is white
+    inverted = cv2.bitwise_not(segmented_image)
+
+    # Find contours
+    contours, _ = cv2.findContours(inverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Ensure at least one contour exists
+    if not contours:
+        raise ValueError("No contours found in the segmented image.")
+
+    # Select the largest contour by area
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    if vis:
+        # Create a copy of the segmented image for visualization
+        visualization_image = cv2.cvtColor(segmented_image, cv2.COLOR_GRAY2BGR)
+
+        # Draw the largest contour in green
+        cv2.drawContours(visualization_image, [largest_contour], -1, (0, 255, 0), thickness=2)
+
+        # Calculate and draw the bounding rectangle in blue
+        x, y, w, h = cv2.boundingRect(largest_contour)
+        cv2.rectangle(visualization_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+        # Plot the visualization
+        plt.figure(figsize=(6, 6))
+        plt.title("Largest Contour and Bounding Rectangle")
+        plt.imshow(cv2.cvtColor(visualization_image, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
+        plt.show()
+
+    # Return the largest contour as a list
+    return [largest_contour]
