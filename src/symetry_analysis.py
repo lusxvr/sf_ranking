@@ -23,7 +23,8 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
     assert len(contours) == 1, "Expected exactly one contour"
     main_contour = contours[0]
     
-    mask = np.zeros_like(preprocessed_image)
+    #mask = np.zeros_like(preprocessed_image)
+    mask = np.full(preprocessed_image.shape, 255, dtype=np.uint8)
     cv2.drawContours(mask, [main_contour], -1, (255), thickness=cv2.FILLED)
     
     #bounding box of contour for cropping
@@ -33,12 +34,13 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
     
     # imge needs to be square; mif not, apply padding
     size = max(w, h)
-    square = np.zeros((size, size), dtype=np.uint8)
+    square = np.full((size, size), 255, dtype=np.uint8)
     offset_x = (size - w) // 2
     offset_y = (size - h) // 2
     square[offset_y:offset_y+h, offset_x:offset_x+w] = cropped
     
     resized = cv2.resize(square, (512, 512))
+
 
     # Use blurred image to check rotational symetry, this smoothed the effect of artifacts
     blurred = cv2.GaussianBlur(resized, (3, 3), 0)
@@ -49,7 +51,7 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
     rotated_img = []
 
     for angle in angles:
-        rotated = rotate(blurred, angle, reshape=False, mode='constant', cval=0, order=3)
+        rotated = rotate(blurred, angle, reshape=False, mode='constant', cval=255, order=3)
         rotated_img.append(rotated)
         # score = ssim(blurred, rotated, data_range=255)
         score = normalized_cross_correlation(blurred, rotated)
@@ -104,20 +106,20 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
         ((cx, cy), radius) = cv2.minEnclosingCircle(main_contour_padded)
         cv2.circle(visualization_image, (int(cx), int(cy)), int(radius), (0, 255, 0), 2)  # Green circle
 
-        # Add a legend
-        legend_image = np.zeros((70, visualization_image.shape[1], 3), dtype=np.uint8)
-        legend_image += 255
-        cv2.putText(legend_image, "Bounding Rectangle (Blue)", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-        cv2.putText(legend_image, "Bounding Circle (Green)", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        # # Add a legend
+        # legend_image = np.zeros((70, visualization_image.shape[1], 3), dtype=np.uint8)
+        # legend_image += 255
+        # cv2.putText(legend_image, "Bounding Rectangle (Blue)", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+        # cv2.putText(legend_image, "Bounding Circle (Green)", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-        # Combine the visualization image and legend
-        final_visualization = np.vstack((visualization_image, legend_image))
+        # # Combine the visualization image and legend
+        # final_visualization = np.vstack((visualization_image, legend_image))
 
         plt.figure(figsize=(12, 6))
         
         plt.subplot(2, 3, 1)
         plt.title("Original + Circularity")
-        plt.imshow(cv2.cvtColor(final_visualization, cv2.COLOR_BGR2RGB))
+        plt.imshow(cv2.cvtColor(visualization_image, cv2.COLOR_BGR2RGB))
         plt.axis('off')
         
         plt.subplot(2, 3, 2)
@@ -198,7 +200,7 @@ def pipeline(image):
     # Plot the results (optional for debugging)
     plot_images(
         [image, gray, edges, segmentation_result],
-        ["Original Image", "Grayscale Image", "Canny Edges", "Segmented Image (Foreground: Black, Background: White)"],
+        ["Original", "Grayscale", "Canny Edges", "Segmented (Foreground: B, Background: W)"],
         [None, "gray", "gray", "gray"]
     )
 
@@ -233,10 +235,34 @@ def extract_contour(segmented_image, vis=True):
         x, y, w, h = cv2.boundingRect(largest_contour)
         cv2.rectangle(visualization_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
+        # Add a black border (frame) around the image
+        border_size = 5  # Adjust border size as needed
+        bordered_image = cv2.copyMakeBorder(
+            visualization_image,
+            border_size,
+            border_size,
+            border_size,
+            border_size,
+            cv2.BORDER_CONSTANT,
+            value=(255, 255, 255),  # Black border
+        )
+
+         # Add a black border (frame) around the image
+        border_size = 5  # Adjust border size as needed
+        bordered_image = cv2.copyMakeBorder(
+            bordered_image,
+            border_size,
+            border_size,
+            border_size,
+            border_size,
+            cv2.BORDER_CONSTANT,
+            value=(0, 0, 0),  # Black border
+        )
+
         # Plot the visualization
         plt.figure(figsize=(6, 6))
-        plt.title("Largest Contour and Bounding Rectangle")
-        plt.imshow(cv2.cvtColor(visualization_image, cv2.COLOR_BGR2RGB))
+        # plt.title("Largest Contour and Bounding Rectangle")
+        plt.imshow(cv2.cvtColor(bordered_image, cv2.COLOR_BGR2RGB))
         plt.axis('off')
         plt.show()
 
