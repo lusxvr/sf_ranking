@@ -153,6 +153,7 @@ def analyze_symmetry(preprocessed_image, contours, vis=False):
 
 
 def plot_images(images, titles, cmaps):
+    """Plot a list of images with titles."""
     plt.figure(figsize=(15, 5))
     for i, (image, title, cmap) in enumerate(zip(images, titles, cmaps)):
         plt.subplot(1, len(images), i + 1)
@@ -164,16 +165,14 @@ def plot_images(images, titles, cmaps):
 
 
 def pipeline(image): 
+    """Segment snowflake from the background using Canny Edge Detection and Flood Fill."""
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Step 1: Enhance Contrast using Histogram Equalization
-    equalized = gray  # Skip histogram equalization for simplicity
+    # Canny Edge Detection
+    edges = cv2.Canny(gray, 50, 150)
 
-    # Step 2: Apply Canny Edge Detection
-    edges = cv2.Canny(equalized, 50, 150)
-
-    # Step 3: Fill the Object (Flood Fill on Edges)
+    # Fill the Object (Flood Fill on Edges)
     flood_fill = edges.copy()
     h, w = flood_fill.shape[:2]
     mask = np.zeros((h + 2, w + 2), np.uint8)
@@ -181,19 +180,19 @@ def pipeline(image):
     # Perform flood fill from the edges to detect connected regions
     cv2.floodFill(flood_fill, mask, (0, 0), 255)
 
-    # Step 4: Invert the Flood-Filled Image
+    # Invert the Flood-Filled Image
     flood_fill_inverted = cv2.bitwise_not(flood_fill)
 
-    # Step 5: Combine the Inverted Flood-Fill and Original Edges
+    # Combine the Inverted Flood-Fill and Original Edges
     combined = cv2.bitwise_or(edges, flood_fill_inverted)
 
-    # Step 6: Morphological Operations to Close Small Gaps
+    # Morphological Operations to Close Small Gaps
     kernel = np.ones((3, 3), np.uint8)
     segmentation_mask = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    # Step 7: Invert the Final Mask to make Foreground Black and Background White
+    #Invert the Final Mask to make Foreground Black and Background White
     segmentation_result = cv2.bitwise_not(segmentation_mask)
-    #segmentation_result = segmentation_mask
+
     # Ensure binary output
     segmentation_result = (segmentation_result > 0).astype(np.uint8) * 255
 
@@ -209,7 +208,6 @@ def pipeline(image):
 def extract_contour(segmented_image, vis=True):
     """
     Extract the largest contour from the segmented image.
-    Optionally visualize the contour and bounding rectangle.
     """
     # Invert the mask if the background is black and the foreground is white
     inverted = cv2.bitwise_not(segmented_image)
@@ -221,7 +219,7 @@ def extract_contour(segmented_image, vis=True):
     if not contours:
         raise ValueError("No contours found in the segmented image.")
 
-    # Select the largest contour by area
+    #Select the largest contour by area
     largest_contour = max(contours, key=cv2.contourArea)
 
     if vis:
@@ -235,8 +233,7 @@ def extract_contour(segmented_image, vis=True):
         x, y, w, h = cv2.boundingRect(largest_contour)
         cv2.rectangle(visualization_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-        # Add a black border (frame) around the image
-        border_size = 5  # Adjust border size as needed
+        border_size = 5 
         bordered_image = cv2.copyMakeBorder(
             visualization_image,
             border_size,
@@ -244,11 +241,10 @@ def extract_contour(segmented_image, vis=True):
             border_size,
             border_size,
             cv2.BORDER_CONSTANT,
-            value=(255, 255, 255),  # Black border
+            value=(255, 255, 255),  
         )
 
-         # Add a black border (frame) around the image
-        border_size = 5  # Adjust border size as needed
+        border_size = 5 
         bordered_image = cv2.copyMakeBorder(
             bordered_image,
             border_size,
@@ -256,7 +252,7 @@ def extract_contour(segmented_image, vis=True):
             border_size,
             border_size,
             cv2.BORDER_CONSTANT,
-            value=(0, 0, 0),  # Black border
+            value=(0, 0, 0),  
         )
 
         # Plot the visualization
