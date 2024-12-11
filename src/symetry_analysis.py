@@ -11,6 +11,8 @@ def normalized_cross_correlation(image1, image2):
     mean1, mean2 = np.mean(image1_flat), np.mean(image2_flat)
     numerator = np.sum((image1_flat - mean1) * (image2_flat - mean2))
     denominator = np.sqrt(np.sum((image1_flat - mean1) ** 2) * np.sum((image2_flat - mean2) ** 2))
+    if denominator == 0: # Avoiding division by 0
+        return 0
     return numerator / denominator
 
 def analyze_symmetry(preprocessed_image, contours, vis=False):
