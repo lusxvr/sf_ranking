@@ -1,6 +1,7 @@
 import os
 
 def rename_files(folder_path):
+    """Rename all files in a folder to a 3-digit number."""
     files = os.listdir(folder_path)
     for index, filename in enumerate(files):
         file_extension = os.path.splitext(filename)[1]

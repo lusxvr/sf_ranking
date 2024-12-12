@@ -14,7 +14,6 @@ def extract_votes(db_path, json_path):
     votes = {}
     for row in numbers:
         votes[row[0]] = row[1]
-    #numbers_list = [row[0] for row in numbers]
 
     # Save to JSON
     with open("votes.json", "w") as json_file:
