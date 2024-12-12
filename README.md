@@ -19,6 +19,13 @@ conda activate cv
 Feel free to upload your own data, for examples and the pictures we used in the development, see `data/`.
 
 ## Running the Rating Tool
-To try the method, simply run `dev.ipynb`, this takes all pictures in the `data/` folder and runs our method on them and checks the correlation with the votes generated through the user study.
+To try the method, simply run `dev.ipynb`. This notebook applies our method to all images in the `data/` folder, and checks the correlation of the computed scores with the votes generated through the user study.
 
-## Running the Webserver for Voting
+## Running the Webapplication for Voting
+To explore our user study, the webapplication used to collect votes on the snowflakes' beauty can be run locally. After installing Node.js and npm on your machine, go to the top level directory of this project and run:
+```bash
+npm install
+node server.js
+```
+Then, the server is running on http://localhost:3000
+Afterbeing presented 15 random pairs of snowflake images, the localhost tab will close automatically.
